@@ -1,3 +1,14 @@
+-- Tabla calles
+DROP TABLE IF EXISTS calles CASCADE;
+CREATE TABLE calles (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100),
+    tipo_via VARCHAR(50),
+    longitud NUMERIC(10,2),
+    geom GEOMETRY(LINESTRING, 4326) NOT NULL
+);
+CREATE INDEX idx_calles_geom ON calles USING GIST (geom);
+
 -- Tabla nodos
 DROP TABLE IF EXISTS nodos CASCADE;
 CREATE TABLE nodos (
