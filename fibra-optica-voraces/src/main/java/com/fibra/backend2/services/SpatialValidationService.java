@@ -1,14 +1,22 @@
 package com.fibra.backend2.services;
 
-import com.fibra.backend2.dto.NodoDTO;
+import com.fibra.backend2.repositories.CalleRepository;
 
 public class SpatialValidationService {
 
-    public boolean validarPoste(NodoDTO nodo) {
-        return nodo != null;
+    private static final double TOLERANCIA_CALLE_METROS = 50.0;
+
+    private final CalleRepository calleRepository;
+
+    public SpatialValidationService(CalleRepository calleRepository) {
+        this.calleRepository = calleRepository;
     }
 
-    public double distanciaACalle(NodoDTO nodo) {
-        return 0.0;
+    public boolean validarPoste(double latitud, double longitud) {
+        return calleRepository.existeCalleCercana(latitud, longitud, TOLERANCIA_CALLE_METROS);
+    }
+
+    public double distanciaACalle(double latitud, double longitud) {
+        return calleRepository.distanciaMinimaACalle(latitud, longitud);
     }
 }
