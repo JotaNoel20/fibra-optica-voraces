@@ -4,6 +4,7 @@ import com.fibra.backend2.repositories.CalleRepository;
 
 public class SpatialValidationService {
 
+    // Distancia maxima permitida entre un poste y una calle.
     private static final double TOLERANCIA_CALLE_METROS = 50.0;
 
     private final CalleRepository calleRepository;
