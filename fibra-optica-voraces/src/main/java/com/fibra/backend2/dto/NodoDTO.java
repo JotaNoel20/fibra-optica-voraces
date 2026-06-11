@@ -11,6 +11,21 @@ public class NodoDTO {
     private double latitud;
     private double longitud;
 
+    public NodoDTO() {
+    }
+
+    public NodoDTO(Integer id, String nombre, String tipo, String estado, Integer capacidadMax,
+                   Integer clientesActuales, double latitud, double longitud) {
+        this.id = id;
+        this.nombre = nombre;
+        this.tipo = tipo;
+        this.estado = estado;
+        this.capacidadMax = capacidadMax;
+        this.clientesActuales = clientesActuales;
+        this.latitud = latitud;
+        this.longitud = longitud;
+    }
+
     public Integer getId() {
         return id;
     }
@@ -73,5 +88,19 @@ public class NodoDTO {
 
     public void setLongitud(double longitud) {
         this.longitud = longitud;
+    }
+
+    @Override
+    public String toString() {
+        return "NodoDTO{" +
+                "id=" + id +
+                ", nombre='" + nombre + '\'' +
+                ", tipo='" + tipo + '\'' +
+                ", estado='" + estado + '\'' +
+                ", capacidadMax=" + capacidadMax +
+                ", clientesActuales=" + clientesActuales +
+                ", latitud=" + latitud +
+                ", longitud=" + longitud +
+                '}';
     }
 }

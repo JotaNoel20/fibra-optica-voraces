@@ -6,7 +6,16 @@ public class CalleDTO {
     private String nombre;
     private String tipoVia;
     private Double longitud;
-    private String geometria;
+
+    public CalleDTO() {
+    }
+
+    public CalleDTO(Integer id, String nombre, String tipoVia, Double longitud) {
+        this.id = id;
+        this.nombre = nombre;
+        this.tipoVia = tipoVia;
+        this.longitud = longitud;
+    }
 
     public Integer getId() {
         return id;
@@ -40,11 +49,13 @@ public class CalleDTO {
         this.longitud = longitud;
     }
 
-    public String getGeometria() {
-        return geometria;
-    }
-
-    public void setGeometria(String geometria) {
-        this.geometria = geometria;
+    @Override
+    public String toString() {
+        return "CalleDTO{" +
+                "id=" + id +
+                ", nombre='" + nombre + '\'' +
+                ", tipoVia='" + tipoVia + '\'' +
+                ", longitud=" + longitud +
+                '}';
     }
 }

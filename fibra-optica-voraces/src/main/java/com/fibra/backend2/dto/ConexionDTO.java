@@ -6,7 +6,16 @@ public class ConexionDTO {
     private Integer origenId;
     private Integer destinoId;
     private Double distancia;
-    private Double costo;
+
+    public ConexionDTO() {
+    }
+
+    public ConexionDTO(Integer id, Integer origenId, Integer destinoId, Double distancia) {
+        this.id = id;
+        this.origenId = origenId;
+        this.destinoId = destinoId;
+        this.distancia = distancia;
+    }
 
     public Integer getId() {
         return id;
@@ -40,11 +49,13 @@ public class ConexionDTO {
         this.distancia = distancia;
     }
 
-    public Double getCosto() {
-        return costo;
-    }
-
-    public void setCosto(Double costo) {
-        this.costo = costo;
+    @Override
+    public String toString() {
+        return "ConexionDTO{" +
+                "id=" + id +
+                ", origenId=" + origenId +
+                ", destinoId=" + destinoId +
+                ", distancia=" + distancia +
+                '}';
     }
 }
