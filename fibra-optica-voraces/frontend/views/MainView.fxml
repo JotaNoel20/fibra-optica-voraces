@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane fx:id="mainContainer" prefHeight="720.0" prefWidth="1024.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="frontend.controllers.MainController">
+    
+    <top>
+        <fx:include fx:id="toolbar" source="ToolbarView.fxml" />
+    </top>
+    
+    <center>
+        <StackPane fx:id="mapStackPane" BorderPane.alignment="CENTER">
+            <children>
+                
+                <fx:include fx:id="map" source="MapView.fxml" />
+                
+                <fx:include fx:id="legend" source="LegendView.fxml" StackPane.alignment="BOTTOM_RIGHT">
+                    <StackPane.margin>
+                        <Insets bottom="15.0" right="15.0" />
+                    </StackPane.margin>
+                </fx:include>
+                
+            </children>
+        </StackPane>
+    </center>
+    
+</BorderPane>

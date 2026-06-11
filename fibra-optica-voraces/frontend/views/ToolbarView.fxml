@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.geometry.Insets?>
+
+<HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: #e0e0e0; -fx-border-color: #b5b5b5; -fx-border-width: 0 0 1 0;" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="frontend.controllers.ToolbarController">
+    <children>
+        <Button fx:id="btnCentral" mnemonicParsing="false" onAction="#seleccionarCentral" text="Añadir Central" style="-fx-font-weight: bold;" />
+        <Button fx:id="btnPoste" mnemonicParsing="false" onAction="#seleccionarPoste" text="Añadir Poste" style="-fx-font-weight: bold;" />
+        <Button fx:id="btnCliente" mnemonicParsing="false" onAction="#seleccionarCliente" text="Añadir Cliente" style="-fx-font-weight: bold;" />
+        
+        <Separator orientation="VERTICAL" prefHeight="30.0" />
+        
+        <Button fx:id="btnGenerar" mnemonicParsing="false" onAction="#generarRed" text="Generar Red (Prim/Kruskal)" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;" />
+        <Button fx:id="btnComparar" mnemonicParsing="false" onAction="#compararAlgoritmos" text="Comparar Algoritmos" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;" />
+    </children>
+    <padding>
+        <Insets bottom="10.0" left="15.0" right="15.0" top="10.0" />
+    </padding>
+</HBox>
