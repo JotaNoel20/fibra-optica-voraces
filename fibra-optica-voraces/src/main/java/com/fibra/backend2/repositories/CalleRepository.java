@@ -14,7 +14,8 @@ import java.util.List;
 public class CalleRepository {
 
     public List<CalleDTO> listarCalles() {
-        String sql = "SELECT id, nombre, tipo_via, longitud FROM calles ORDER BY id";
+        // CORRECCIÓN: Seleccionamos la geometría convertida a texto plano WKT mediante ST_AsText
+        String sql = "SELECT id, nombre, tipo_via, longitud, ST_AsText(geom) AS geometria_wkt FROM calles ORDER BY id";
         List<CalleDTO> calles = new ArrayList<>();
 
         try (Connection connection = DatabaseConnection.getConnection();
@@ -44,6 +45,7 @@ public class CalleRepository {
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
+            // Nota: PostGIS recibe primero la longitud y luego la latitud (X, Y)
             statement.setDouble(1, longitud);
             statement.setDouble(2, latitud);
             statement.setDouble(3, toleranciaMetros);
@@ -86,12 +88,14 @@ public class CalleRepository {
         }
     }
 
+    // CORRECCIÓN: Modificado para extraer la columna "geometria_wkt" e inyectarla al nuevo constructor de CalleDTO
     private CalleDTO mapearCalle(ResultSet resultSet) throws SQLException {
         return new CalleDTO(
                 resultSet.getObject("id", Integer.class),
                 resultSet.getString("nombre"),
                 resultSet.getString("tipo_via"),
-                resultSet.getObject("longitud", Double.class)
+                resultSet.getObject("longitud", Double.class),
+                resultSet.getString("geometria_wkt") // <── NUEVO CAMPO MAPEADO
         );
     }
 }

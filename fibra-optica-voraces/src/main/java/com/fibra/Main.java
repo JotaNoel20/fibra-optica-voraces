@@ -4,39 +4,39 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import java.io.File;
 import java.net.URL;
 
 public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        // Localiza el archivo FXML directamente en tu carpeta personalizada de frontend
-        File fxmlFile = new File("frontend/views/MainView.fxml");
-        if (!fxmlFile.exists()) {
-            System.err.println("¡Error Crítico! No se encontró el archivo MainView.fxml en: " + fxmlFile.getAbsolutePath());
+        // CORRECCIÓN EXACTA: Apunta a donde están tus archivos según tu árbol de VS Code
+        URL fxmlUrl = getClass().getResource("/com/fibra/frontend/views/MainView.fxml");
+        
+        if (fxmlUrl == null) {
+            System.err.println("¡Error Crítico! No se encontró el archivo MainView.fxml.");
+            System.err.println("Ruta intentada: /com/fibra/frontend/views/MainView.fxml");
             return;
         }
 
-        // Convierte el archivo a URL para que FXMLLoader lo procese correctamente
-        URL fxmlUrl = fxmlFile.toURI().toURL();
         FXMLLoader loader = new FXMLLoader(fxmlUrl);
         Scene scene = new Scene(loader.load());
         
-        // Intenta cargar tu archivo de estilos CSS personalizados si existe
-        File cssFile = new File("frontend/styles/application.css");
-        if (cssFile.exists()) {
-            scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+        // CORRECCIÓN EXACTA CSS: Apunta a tu carpeta styles dentro del paquete
+        URL cssUrl = getClass().getResource("/com/fibra/frontend/styles/application.css");
+        if (cssUrl != null) {
+            scene.getStylesheets().add(cssUrl.toExternalForm());
+        } else {
+            System.out.println("Nota: No se encontró 'application.css' en /com/fibra/frontend/styles/, usando estilos por defecto.");
         }
         
-        // Configura la ventana principal del sistema
+        // Configuración de la ventana principal
         primaryStage.setTitle("Sistema de Optimización de Redes de Fibra Óptica - Frontend");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
     public static void main(String[] args) {
-        // Arranca el ciclo de vida de la interfaz gráfica
         launch(args);
     }
 }

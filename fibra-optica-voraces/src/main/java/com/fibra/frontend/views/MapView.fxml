@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.fibra.frontend.map.MapRenderer?>
+
+<MapRenderer fx:id="mapRenderer" 
+             xmlns="http://javafx.com/javafx/21" 
+             xmlns:fx="http://javafx.com/fxml/1" 
+             fx:controller="com.fibra.frontend.controllers.MapController"
+             prefWidth="1000.0" 
+             prefHeight="700.0" />

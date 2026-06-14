@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.Line?>
+
+<VBox fx:id="contenedorLeyenda" 
+      xmlns="http://javafx.com/javafx/22" 
+      xmlns:fx="http://javafx.com/fxml/1" 
+      fx:controller="com.fibra.frontend.controllers.LegendController"
+      spacing="8.0" 
+      maxWidth="220.0" 
+      maxHeight="220.0">
+    
+    <children>
+        <Label fx:id="lblTitulo" text="LEYENDA DE RED" />
+        
+        <HBox spacing="10.0" alignment="CENTER_LEFT">
+            <Circle radius="6.0" fill="RED" />
+            <Label text="Central Principal" style="-fx-text-fill: #E0E0E0;" />
+        </HBox>
+        
+        <HBox spacing="10.0" alignment="CENTER_LEFT">
+            <Circle radius="5.0" fill="ORANGE" />
+            <Label text="Poste Principal" style="-fx-text-fill: #E0E0E0;" />
+        </HBox>
+        
+        <HBox spacing="10.0" alignment="CENTER_LEFT">
+            <Circle radius="5.0" fill="YELLOW" />
+            <Label text="Poste Secundario" style="-fx-text-fill: #E0E0E0;" />
+        </HBox>
+        
+        <HBox spacing="10.0" alignment="CENTER_LEFT">
+            <Circle radius="4.5" fill="LIMEGREEN" />
+            <Label text="Cliente Activo" style="-fx-text-fill: #E0E0E0;" />
+        </HBox>
+        
+        <HBox spacing="10.0" alignment="CENTER_LEFT">
+            <Circle radius="6.5" fill="GOLDENROD" />
+            <Label text="Poste Sugerido" style="-fx-text-fill: #E0E0E0;" />
+        </HBox>
+        
+        <HBox spacing="10.0" alignment="CENTER_LEFT">
+            <Circle radius="5.0" fill="PURPLE" />
+            <Label text="Poste Saturado" style="-fx-text-fill: #E0E0E0;" />
+        </HBox>
+        
+        <HBox spacing="10.0" alignment="CENTER_LEFT">
+            <Circle radius="5.0" fill="CHOCOLATE" />
+            <Label text="Infraestructura Inactiva" style="-fx-text-fill: #E0E0E0;" />
+        </HBox>
+        
+        <HBox spacing="10.0" alignment="CENTER_LEFT">
+            <Line startX="0" endX="20" stroke="CYAN" strokeWidth="2.5" />
+            <Label text="Cable Fibra Óptica" style="-fx-text-fill: #E0E0E0;" />
+        </HBox>
+    </children>
+</VBox>
