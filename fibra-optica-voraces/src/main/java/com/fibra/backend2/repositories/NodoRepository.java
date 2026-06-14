@@ -48,6 +48,55 @@ public class NodoRepository {
         }
     }
 
+    /**
+     * ACTUALIZA un nodo existente en la base de datos
+     */
+    public NodoDTO actualizar(NodoDTO nodo) {
+        String sql = """
+                UPDATE nodos 
+                SET nombre = ?, tipo = ?, estado = ?, capacidad_max = ?, clientes_actuales = ?,
+                    geom = ST_SetSRID(ST_MakePoint(?, ?), 4326)
+                WHERE id = ?
+                RETURNING id, nombre, tipo, estado, capacidad_max, clientes_actuales,
+                          ST_Y(geom) AS latitud, ST_X(geom) AS longitud
+                """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, nodo.getNombre());
+            statement.setString(2, nodo.getTipo());
+            statement.setString(3, nodo.getEstado());
+            statement.setObject(4, nodo.getCapacidadMax());
+            statement.setObject(5, nodo.getClientesActuales());
+            statement.setDouble(6, nodo.getLongitud());
+            statement.setDouble(7, nodo.getLatitud());
+            statement.setInt(8, nodo.getId());
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return mapearNodo(resultSet);
+                }
+                throw new SpatialException("No se pudo actualizar el nodo con id " + nodo.getId());
+            }
+        } catch (SQLException e) {
+            throw new SpatialException("Error al actualizar el nodo.", e);
+        }
+    }
+
+    /**
+     * RESETEA los contadores clientes_actuales de todos los postes a 0
+     */
+    public void resetearContadoresPostes() {
+        String sql = "UPDATE nodos SET clientes_actuales = 0 WHERE tipo LIKE 'POSTE%'";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            int actualizados = statement.executeUpdate();
+            System.out.println("  Postes reseteados: " + actualizados);
+        } catch (SQLException e) {
+            throw new SpatialException("Error al resetear contadores de postes.", e);
+        }
+    }
+
     public NodoDTO buscarPorId(int id) {
         String sql = "SELECT " + COLUMNAS_NODO + " FROM nodos WHERE id = ?";
 

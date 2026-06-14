@@ -12,9 +12,9 @@ public final class DatabaseConnection {
     }
 
     public static Connection getConnection() throws SQLException {
-        String url = System.getenv("DB_URL");
-        String user = System.getenv("DB_USER");
-        String password = System.getenv("DB_PASSWORD");
+        String url = "jdbc:postgresql://localhost:5432/fibra_optica_db";
+        String user = "postgres"; // El usuario por defecto de Postgres suele ser este
+        String password = "10132005";
 
         List<String> missingVariables = new ArrayList<>();
         if (isBlank(url)) {

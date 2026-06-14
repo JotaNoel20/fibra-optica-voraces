@@ -1,5 +1,6 @@
 package com.fibra.backend1.graph;
 
+import com.fibra.backend1.enums.EstadoNodo;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,27 +22,32 @@ public class Grafo {
         aristas.add(arista);
     }
 
+    /**
+     * MEJORA: Filtra y descarta automáticamente vecinos que estén INACTIVOS.
+     * Evita que los algoritmos de exploración de rutas consideren postes fuera de servicio.
+     */
     public List<Nodo> obtenerVecinos(Nodo nodo) {
         List<Nodo> vecinos = new ArrayList<>();
 
         for (Arista arista : aristas) {
             if (arista.getOrigen().equals(nodo)) {
-                vecinos.add(arista.getDestino());
+                Nodo vecino = arista.getDestino();
+                if (vecino.getEstado() != EstadoNodo.INACTIVO) {
+                    vecinos.add(vecino);
+                }
             }
 
             if (arista.getDestino().equals(nodo)) {
-                vecinos.add(arista.getOrigen());
+                Nodo vecino = arista.getOrigen();
+                if (vecino.getEstado() != EstadoNodo.INACTIVO) {
+                    vecinos.add(vecino);
+                }
             }
         }
 
         return vecinos;
     }
 
-    public List<Nodo> getNodos() {
-        return nodos;
-    }
-
-    public List<Arista> getAristas() {
-        return aristas;
-    }
+    public List<Nodo> getNodos() { return nodos; }
+    public List<Arista> getAristas() { return aristas; }
 }

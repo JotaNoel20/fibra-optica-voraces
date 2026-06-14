@@ -30,7 +30,13 @@ public class GrafoBuilderService {
         Grafo grafo = new Grafo();
         Map<Integer, Nodo> nodosPorId = new HashMap<>();
 
+        // Filtrar nodos INACTIVOS al construir el grafo
         for (NodoDTO nodoDTO : nodoRepository.listarTodos()) {
+            // Saltar nodos INACTIVOS
+            if ("INACTIVO".equalsIgnoreCase(nodoDTO.getEstado())) {
+                System.out.println("  Omitiendo nodo INACTIVO ID: " + nodoDTO.getId());
+                continue;
+            }
             Nodo nodo = nodoMapper.toModel(nodoDTO);
             grafo.agregarNodo(nodo);
             nodosPorId.put(nodo.getId(), nodo);
@@ -41,9 +47,9 @@ public class GrafoBuilderService {
             Nodo destino = nodosPorId.get(conexionDTO.getDestinoId());
 
             if (origen == null || destino == null) {
-                throw new SpatialException(
-                        "La conexion " + conexionDTO.getId() + " referencia nodos inexistentes."
-                );
+                // No lanzar excepción, solo omitir conexiones con nodos INACTIVOS
+                System.out.println("  Omitiendo conexión " + conexionDTO.getId() + " - nodo no activo");
+                continue;
             }
             if (conexionDTO.getDistancia() == null) {
                 throw new SpatialException(

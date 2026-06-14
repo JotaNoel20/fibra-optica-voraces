@@ -6,15 +6,17 @@ public class CalleDTO {
     private String nombre;
     private String tipoVia;
     private Double longitud;
+    private String geometriaWkt; // <── NUEVO: Guardará la cadena "MULTILINESTRING((X1 Y1, X2 Y2,...))"
 
     public CalleDTO() {
     }
 
-    public CalleDTO(Integer id, String nombre, String tipoVia, Double longitud) {
+    public CalleDTO(Integer id, String nombre, String tipoVia, Double longitud, String geometriaWkt) {
         this.id = id;
         this.nombre = nombre;
         this.tipoVia = tipoVia;
         this.longitud = longitud;
+        this.geometriaWkt = geometriaWkt;
     }
 
     public Integer getId() {
@@ -49,6 +51,14 @@ public class CalleDTO {
         this.longitud = longitud;
     }
 
+    public String getGeometriaWkt() {
+        return geometriaWkt;
+    }
+
+    public void setGeometriaWkt(String geometriaWkt) {
+        this.geometriaWkt = geometriaWkt;
+    }
+
     @Override
     public String toString() {
         return "CalleDTO{" +
@@ -56,6 +66,7 @@ public class CalleDTO {
                 ", nombre='" + nombre + '\'' +
                 ", tipoVia='" + tipoVia + '\'' +
                 ", longitud=" + longitud +
+                ", geometriaWkt='" + geometriaWkt + '\'' +
                 '}';
     }
 }
