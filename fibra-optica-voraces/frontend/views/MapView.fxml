@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
-<?import javafx.scene.layout.Pane?>
-
-<Pane fx:id="mapPane" onMouseClicked="#onMapClick" prefHeight="600.0" prefWidth="800.0" style="-fx-background-color: #f9f9f9; -fx-border-color: #cccccc;" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="frontend.controllers.MapController">
-    <children>
-        </children>
-</Pane>
