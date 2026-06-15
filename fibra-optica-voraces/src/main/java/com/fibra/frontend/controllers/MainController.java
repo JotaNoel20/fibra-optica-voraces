@@ -13,6 +13,7 @@ import com.fibra.backend2.repositories.CalleRepository;
 import com.fibra.backend2.repositories.NodoRepository;
 import com.fibra.backend2.repositories.ConexionRepository;
 import com.fibra.backend2.mapper.NodoMapper;
+import com.fibra.backend2.config.DatabaseConnection;
 import com.fibra.backend1.graph.Grafo;
 import com.fibra.backend1.graph.Nodo;
 import com.fibra.backend1.graph.Arista;
@@ -24,6 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ArrayList;
+import java.util.Set;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -32,7 +37,6 @@ import javafx.application.Platform;
 
 public class MainController {
 
-    // Flag para activar/desactivar logs detallados
     private static final boolean DEBUG = false;
 
     private final CalleRepository calleRepository = new CalleRepository();
@@ -67,9 +71,9 @@ public class MainController {
                 List<ConexionDTO> conexiones = conexionService.listarConexiones();
                 
                 if (DEBUG) {
-                    System.out.println("──► CANTIDAD DE CALLES RECUPERADAS: " + calles.size());
-                    System.out.println("──► CANTIDAD DE NODOS RECUPERADOS: " + nodos.size());
-                    System.out.println("──► CANTIDAD DE CONEXIONES RECUPERADAS: " + conexiones.size());
+                    System.out.println("──► CALLES: " + calles.size());
+                    System.out.println("──► NODOS: " + nodos.size());
+                    System.out.println("──► CONEXIONES: " + conexiones.size());
                 }
                 
                 mapController.setDatosIniciales(calles, nodos, conexiones);
@@ -85,25 +89,23 @@ public class MainController {
         }
     }
 
-    /**
-     * Genera la red utilizando el algoritmo seleccionado por el usuario (método legacy)
-     */
     @FXML
     public void implementarRed() {
         implementarRed(false);
     }
     
-    /**
-     * Genera la red utilizando el algoritmo seleccionado por el usuario
-     * @param conectarTodosPostes true = conecta todos los postes aunque no tengan clientes
-     */
-    public void implementarRed(boolean conectarTodosPostes) {
+    public void implementarRed(boolean usarSoloDistancia) {
         List<NodoDTO> nodos = nodoService.listarNodos();
-        boolean existeCentral = nodos.stream()
-                .anyMatch(n -> "CENTRAL".equalsIgnoreCase(n.getTipo()));
+        boolean existeCentral = false;
+        for (NodoDTO n : nodos) {
+            if ("CENTRAL".equalsIgnoreCase(n.getTipo())) {
+                existeCentral = true;
+                break;
+            }
+        }
         
         if (!existeCentral) {
-            mostrarAlertaError("Error", "No existe una central en la red. Debe agregar una central primero.");
+            mostrarAlertaError("Error", "No existe una central en la red.");
             return;
         }
         
@@ -113,19 +115,22 @@ public class MainController {
         dialog.setContentText("Algoritmo:");
         
         Optional<String> result = dialog.showAndWait();
-        result.ifPresent(algoritmo -> {
-            generarRedConAlgoritmo(algoritmo, conectarTodosPostes);
-        });
+        if (result.isPresent()) {
+            final String algoritmo = result.get();
+            generarRedConAlgoritmo(algoritmo, usarSoloDistancia);
+        }
     }
 
-    /**
-     * Compara los resultados de PRIM y KRUSKAL
-     */
     @FXML
     public void compararAlgoritmos() {
         List<NodoDTO> nodos = nodoService.listarNodos();
-        boolean existeCentral = nodos.stream()
-                .anyMatch(n -> "CENTRAL".equalsIgnoreCase(n.getTipo()));
+        boolean existeCentral = false;
+        for (NodoDTO n : nodos) {
+            if ("CENTRAL".equalsIgnoreCase(n.getTipo())) {
+                existeCentral = true;
+                break;
+            }
+        }
         
         if (!existeCentral) {
             mostrarAlertaError("Error", "No existe una central en la red.");
@@ -135,36 +140,51 @@ public class MainController {
         try {
             Grafo grafo = grafoBuilderService.construirGrafo();
             
-            Nodo central = grafo.getNodos().stream()
-                    .filter(n -> n.getTipo() == TipoNodo.CENTRAL)
-                    .findFirst()
-                    .orElse(null);
+            Nodo central = null;
+            for (Nodo n : grafo.getNodos()) {
+                if (n.getTipo() == TipoNodo.CENTRAL) {
+                    central = n;
+                    break;
+                }
+            }
             
             if (central == null) {
                 mostrarAlertaError("Error", "No se encontró la central en el grafo.");
                 return;
             }
             
-            Alert alertaEspera = new Alert(AlertType.INFORMATION);
+            final Alert alertaEspera = new Alert(AlertType.INFORMATION);
             alertaEspera.setTitle("Procesando");
             alertaEspera.setHeaderText("Comparando algoritmos...");
             alertaEspera.setContentText("Por favor espere...");
             alertaEspera.show();
             
-            new Thread(() -> {
-                try {
-                    Map<String, ResultadoRuta> resultados = networkService.compararAlgoritmos(grafo, central);
-                    
-                    Platform.runLater(() -> {
-                        alertaEspera.close();
-                        mostrarComparacionResultados(resultados);
-                    });
-                } catch (Exception e) {
-                    Platform.runLater(() -> {
-                        alertaEspera.close();
-                        mostrarAlertaError("Error al comparar", e.getMessage());
-                        e.printStackTrace();
-                    });
+            final Grafo grafoFinal = grafo;
+            final Nodo centralFinal = central;
+            
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Map<String, ResultadoRuta> resultados = networkService.compararAlgoritmos(grafoFinal, centralFinal);
+                        
+                        Platform.runLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                alertaEspera.close();
+                                mostrarComparacionResultados(resultados);
+                            }
+                        });
+                    } catch (Exception e) {
+                        Platform.runLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                alertaEspera.close();
+                                mostrarAlertaError("Error al comparar", e.getMessage());
+                                e.printStackTrace();
+                            }
+                        });
+                    }
                 }
             }).start();
             
@@ -174,103 +194,133 @@ public class MainController {
         }
     }
 
-    /**
-     * Genera la red con el algoritmo especificado
-     */
-    private void generarRedConAlgoritmo(String algoritmo, boolean conectarTodosPostes) {
+    private void actualizarClientesConectados(final Set<Integer> idsClientes) {
+        if (idsClientes == null || idsClientes.isEmpty()) {
+            return;
+        }
+        
+        String sql = "UPDATE nodos SET clientes_actuales = 1 WHERE id = ?";
+        
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            connection.setAutoCommit(false);
+            for (Integer id : idsClientes) {
+                statement.setInt(1, id);
+                statement.addBatch();
+            }
+            statement.executeBatch();
+            connection.commit();
+            if (DEBUG) System.out.println("  Clientes actualizados: " + idsClientes.size());
+        } catch (SQLException e) {
+            System.err.println("  Error actualizando clientes: " + e.getMessage());
+        }
+    }
+
+    private void actualizarContadoresPostes() {
+        String sql = """
+            UPDATE nodos 
+            SET clientes_actuales = (
+                SELECT COUNT(*) FROM conexiones 
+                WHERE (conexiones.origen_id = nodos.id AND conexiones.destino_id IN (SELECT id FROM nodos WHERE tipo = 'CLIENTE'))
+                   OR (conexiones.destino_id = nodos.id AND conexiones.origen_id IN (SELECT id FROM nodos WHERE tipo = 'CLIENTE'))
+            )
+            WHERE tipo LIKE 'POSTE%'
+            """;
+        
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            int actualizados = statement.executeUpdate();
+            if (DEBUG) System.out.println("  Contadores de postes actualizados: " + actualizados);
+        } catch (SQLException e) {
+            System.err.println("  Error actualizando contadores de postes: " + e.getMessage());
+        }
+    }
+
+    private void generarRedConAlgoritmo(final String algoritmo, final boolean usarSoloDistancia) {
         try {
-            Alert alertaEspera = new Alert(AlertType.INFORMATION);
+            final Alert alertaEspera = new Alert(AlertType.INFORMATION);
             alertaEspera.setTitle("Procesando");
             alertaEspera.setHeaderText("Generando red con " + algoritmo + "...");
-            alertaEspera.setContentText("Modo: " + (conectarTodosPostes ? "Conectar todos los postes" : "Normal"));
+            alertaEspera.setContentText("Modo: " + (usarSoloDistancia ? "Solo distancia" : "Costo con penalización"));
             alertaEspera.show();
             
-            new Thread(() -> {
-                long tiempoInicio = System.currentTimeMillis();
-                
-                try {
-                    if (DEBUG) System.out.println("\n=== PASO 1: Construyendo grafo desde BD ===");
-                    Grafo grafo = grafoBuilderService.construirGrafo();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    long tiempoInicio = System.currentTimeMillis();
                     
-                    if (DEBUG) {
-                        System.out.println("  Nodos en grafo: " + grafo.getNodos().size());
+                    try {
+                        if (DEBUG) System.out.println("\n=== RESETEANDO ===");
+                        conexionRepository.eliminarTodas();
+                        nodoRepository.resetearContadoresPostes();
+                        nodoRepository.resetearClientes();
+                        
+                        if (DEBUG) System.out.println("\n=== CONSTRUYENDO GRAFO ===");
+                        Grafo grafo = grafoBuilderService.construirGrafo();
+                        
+                        Nodo central = null;
                         for (Nodo n : grafo.getNodos()) {
-                            System.out.println("    Nodo ID: " + n.getId() + " | Tipo: " + n.getTipo() + " | Estado: " + n.getEstado());
+                            if (n.getTipo() == TipoNodo.CENTRAL) {
+                                central = n;
+                                break;
+                            }
                         }
-                    }
-                    
-                    Nodo central = grafo.getNodos().stream()
-                            .filter(n -> n.getTipo() == TipoNodo.CENTRAL)
-                            .findFirst()
-                            .orElse(null);
-                    
-                    if (central == null) {
+                        
+                        if (central == null) {
+                            Platform.runLater(() -> {
+                                alertaEspera.close();
+                                mostrarAlertaError("Error", "No se encontró una central");
+                            });
+                            return;
+                        }
+                        
+                        if (DEBUG) System.out.println("\n=== EJECUTANDO ALGORITMO " + algoritmo + " ===");
+                        final ResultadoRuta resultado = networkService.generarRed(grafo, central, algoritmo, usarSoloDistancia);
+                        
+                        if (resultado.getConexiones().isEmpty() && resultado.getCostoTotal() < 0) {
+                            Platform.runLater(() -> {
+                                alertaEspera.close();
+                                mostrarAlertaError("Error", "No se pudo generar la red");
+                            });
+                            return;
+                        }
+                        
+                        if (DEBUG) System.out.println("\n=== GUARDANDO CONEXIONES ===");
+                        List<ConexionDTO> conexionesBatch = new ArrayList<>();
+                        for (Arista arista : resultado.getConexiones()) {
+                            ConexionDTO conexion = new ConexionDTO();
+                            conexion.setOrigenId(arista.getOrigen().getId());
+                            conexion.setDestinoId(arista.getDestino().getId());
+                            conexion.setDistancia(arista.getDistancia());
+                            conexionesBatch.add(conexion);
+                        }
+                        
+                        if (!conexionesBatch.isEmpty()) {
+                            conexionRepository.guardarBatch(conexionesBatch);
+                        }
+                        
+                        if (DEBUG) System.out.println("\n=== ACTUALIZANDO CLIENTES ===");
+                        actualizarClientesConectados(resultado.getIdsClientesConectados());
+                        
+                        if (DEBUG) System.out.println("\n=== ACTUALIZANDO POSTES ===");
+                        actualizarContadoresPostes();
+                        
+                        final long tiempoEjecucion = System.currentTimeMillis() - tiempoInicio;
+                        
                         Platform.runLater(() -> {
                             alertaEspera.close();
-                            mostrarAlertaError("Error", "No se encontró una central en la red");
+                            mostrarResultado(algoritmo, resultado, usarSoloDistancia, tiempoEjecucion);
+                            refrescarMapa();
                         });
-                        return;
-                    }
-                    
-                    if (DEBUG) {
-                        System.out.println("\n=== PASO 2: Ejecutando algoritmo " + algoritmo + " ===");
-                        System.out.println("  Modo conectarTodosPostes: " + conectarTodosPostes);
-                    }
-                    
-                    ResultadoRuta resultado = networkService.generarRed(grafo, central, algoritmo, conectarTodosPostes);
-                    
-                    if (DEBUG) System.out.println("\n=== PASO 3: Procesando resultado ===");
-                    
-                    if (resultado.getConexiones().isEmpty() && resultado.getCostoTotal() < 0) {
+                        
+                    } catch (final Exception e) {
+                        System.err.println("=== ERROR GENERANDO RED ===");
+                        e.printStackTrace();
                         Platform.runLater(() -> {
                             alertaEspera.close();
-                            mostrarAlertaError("Error", "No se pudo generar la red. Verifique que haya nodos suficientes.");
+                            mostrarAlertaError("Error al generar red", e.getMessage());
                         });
-                        return;
                     }
-                    
-                    if (DEBUG) System.out.println("\n=== PASO 4: Eliminando conexiones existentes ===");
-                    conexionRepository.eliminarTodas();
-                    
-                    if (DEBUG) System.out.println("\n=== PASO 4.5: Reseteando contadores de postes ===");
-                    nodoRepository.resetearContadoresPostes();
-                    
-                    if (DEBUG) System.out.println("\n=== PASO 5: Guardando nuevas conexiones en BD (BATCH) ===");
-                    
-                    // PREPARAR BATCH DE CONEXIONES
-                    List<ConexionDTO> conexionesBatch = new ArrayList<>();
-                    for (Arista arista : resultado.getConexiones()) {
-                        ConexionDTO conexion = new ConexionDTO();
-                        conexion.setOrigenId(arista.getOrigen().getId());
-                        conexion.setDestinoId(arista.getDestino().getId());
-                        conexion.setDistancia(arista.getDistancia());
-                        conexionesBatch.add(conexion);
-                    }
-                    
-                    if (DEBUG) System.out.println("  Conexiones a guardar: " + conexionesBatch.size());
-                    
-                    // GUARDAR BATCH
-                    if (!conexionesBatch.isEmpty()) {
-                        conexionRepository.guardarBatch(conexionesBatch);
-                        if (DEBUG) System.out.println("  Batch guardado exitosamente");
-                    }
-                    
-                    long tiempoFin = System.currentTimeMillis();
-                    long tiempoEjecucion = tiempoFin - tiempoInicio;
-                    
-                    Platform.runLater(() -> {
-                        alertaEspera.close();
-                        mostrarResultado(algoritmo, resultado, conectarTodosPostes, tiempoEjecucion);
-                        refrescarMapa();
-                    });
-                    
-                } catch (Exception e) {
-                    System.err.println("\n=== ERROR GENERANDO RED ===");
-                    e.printStackTrace();
-                    Platform.runLater(() -> {
-                        alertaEspera.close();
-                        mostrarAlertaError("Error al generar red", e.getMessage());
-                    });
                 }
             }).start();
             
@@ -280,12 +330,8 @@ public class MainController {
         }
     }
 
-    /**
-     * Muestra los resultados de la generación de red
-     */
-    private void mostrarResultado(String algoritmo, ResultadoRuta resultado, boolean conectarTodosPostes, long tiempoMs) {
-        String modoTexto = conectarTodosPostes ? " (Modo: Todos los postes)" : "";
-        
+    private void mostrarResultado(String algoritmo, ResultadoRuta resultado, boolean usarSoloDistancia, long tiempoMs) {
+        String modoTexto = usarSoloDistancia ? " (Modo: Solo distancia)" : " (Modo: Costo con penalización)";
         String tiempoTexto = (tiempoMs < 1000) ? String.format("%d ms", tiempoMs) : String.format("%.2f s", tiempoMs / 1000.0);
         
         String mensaje = String.format(
@@ -294,12 +340,14 @@ public class MainController {
                 "📏 Distancia total: %.2f m\n" +
                 "💰 Costo total: %.2f\n" +
                 "🗼 Postes utilizados: %d\n" +
+                "👥 Clientes conectados: %d\n" +
                 "⏱️ Tiempo de ejecución: %s",
                 algoritmo, modoTexto,
                 resultado.getConexiones().size(),
                 resultado.getDistanciaTotal(),
                 resultado.getCostoTotal(),
                 resultado.getCantidadPostes(),
+                resultado.getCantidadClientesConectados(),
                 tiempoTexto
         );
         
@@ -307,12 +355,11 @@ public class MainController {
         alert.setTitle("Red Generada");
         alert.setHeaderText("Resultado de " + algoritmo);
         alert.setContentText(mensaje);
+        alert.getDialogPane().setMinWidth(550);
+        alert.getDialogPane().setMinHeight(400);
         alert.showAndWait();
     }
 
-    /**
-     * Muestra la comparación entre PRIM y KRUSKAL
-     */
     private void mostrarComparacionResultados(Map<String, ResultadoRuta> resultados) {
         ResultadoRuta prim = resultados.get("PRIM");
         ResultadoRuta kruskal = resultados.get("KRUSKAL");
@@ -335,6 +382,7 @@ public class MainController {
                 "│ Costo: %.2f     │ Costo: %.2f    │\n" +
                 "│ Distancia: %.2f │ Distancia: %.2f │\n" +
                 "│ Postes: %d      │ Postes: %d      │\n" +
+                "│ Clientes: %d    │ Clientes: %d    │\n" +
                 "└─────────────────┴─────────────────┘%s",
                 prim != null ? prim.getCostoTotal() : -1,
                 kruskal != null ? kruskal.getCostoTotal() : -1,
@@ -342,6 +390,8 @@ public class MainController {
                 kruskal != null ? kruskal.getDistanciaTotal() : -1,
                 prim != null ? prim.getCantidadPostes() : 0,
                 kruskal != null ? kruskal.getCantidadPostes() : 0,
+                prim != null ? prim.getCantidadClientesConectados() : 0,
+                kruskal != null ? kruskal.getCantidadClientesConectados() : 0,
                 ganador
         );
         
@@ -349,12 +399,11 @@ public class MainController {
         alert.setTitle("Comparación de Algoritmos");
         alert.setHeaderText("PRIM vs KRUSKAL");
         alert.setContentText(mensaje);
+        alert.getDialogPane().setMinWidth(550);
+        alert.getDialogPane().setMinHeight(400);
         alert.showAndWait();
     }
 
-    /**
-     * Refresca el mapa con los datos actuales de la BD
-     */
     public void refrescarMapa() {
         try {
             List<NodoDTO> nodos = nodoService.listarNodos();
@@ -362,15 +411,13 @@ public class MainController {
             
             if (mapController != null) {
                 mapController.setDatosConDespliegue(nodos, conexiones);
+                mapController.recargarDatos();
             }
         } catch (Exception e) {
             System.err.println("Error al refrescar mapa: " + e.getMessage());
         }
     }
 
-    /**
-     * Despliega la red automática (método legacy)
-     */
     @FXML
     public void desplegarRedAutomatica() {
         implementarRed();
@@ -384,9 +431,6 @@ public class MainController {
         alert.showAndWait();
     }
 
-    /**
-     * Elimina TODOS los nodos y conexiones
-     */
     public void limpiarTodo() {
         try {
             conexionRepository.eliminarTodas();
@@ -397,6 +441,7 @@ public class MainController {
             
             if (mapController != null) {
                 mapController.setDatosConDespliegue(nodosVacios, conexionesVacias);
+                mapController.recargarDatos();
             }
             
             mostrarAlertaError("Éxito", "Se han eliminado todos los nodos y conexiones.");
@@ -406,19 +451,18 @@ public class MainController {
         }
     }
 
-    /**
-     * Elimina SOLO las conexiones
-     */
     public void borrarConexiones() {
         try {
             conexionRepository.eliminarTodas();
             nodoRepository.resetearContadoresPostes();
+            nodoRepository.resetearClientes();
             
             List<NodoDTO> nodos = nodoService.listarNodos();
             List<ConexionDTO> conexionesVacias = conexionService.listarConexiones();
             
             if (mapController != null) {
                 mapController.setDatosConDespliegue(nodos, conexionesVacias);
+                mapController.recargarDatos();
             }
             
             mostrarAlertaError("Éxito", "Se han eliminado todas las conexiones.");

@@ -1,7 +1,9 @@
 package com.fibra.backend1.graph;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ResultadoRuta {
 
@@ -9,7 +11,8 @@ public class ResultadoRuta {
     private double costoTotal;
     private double distanciaTotal;
     private int cantidadPostes;
-    private List<Nodo> nodosSugeridos;  // NUEVO: Lista de nodos sugeridos (temporales, no guardar en BD)
+    private List<Nodo> nodosSugeridos;
+    private Set<Integer> idsClientesConectados;  // NUEVO: IDs de clientes conectados en esta red
 
     /**
      * Constructor principal para resultados de algoritmos
@@ -20,6 +23,7 @@ public class ResultadoRuta {
         this.distanciaTotal = distanciaTotal;
         this.cantidadPostes = cantidadPostes;
         this.nodosSugeridos = new ArrayList<>();
+        this.idsClientesConectados = new HashSet<>();
     }
 
     /**
@@ -32,6 +36,7 @@ public class ResultadoRuta {
         this.distanciaTotal = distanciaTotal;
         this.cantidadPostes = cantidadPostes;
         this.nodosSugeridos = nodosSugeridos != null ? nodosSugeridos : new ArrayList<>();
+        this.idsClientesConectados = new HashSet<>();
     }
 
     // ========== GETTERS Y SETTERS ==========
@@ -116,6 +121,43 @@ public class ResultadoRuta {
         return nodosSugeridos != null ? nodosSugeridos.size() : 0;
     }
 
+    /**
+     * Obtiene los IDs de los clientes conectados en esta red
+     */
+    public Set<Integer> getIdsClientesConectados() {
+        return idsClientesConectados;
+    }
+
+    /**
+     * Establece los IDs de los clientes conectados
+     */
+    public void setIdsClientesConectados(Set<Integer> idsClientesConectados) {
+        this.idsClientesConectados = idsClientesConectados != null ? idsClientesConectados : new HashSet<>();
+    }
+
+    /**
+     * Agrega un ID de cliente conectado
+     */
+    public void agregarClienteConectado(int idCliente) {
+        if (this.idsClientesConectados != null) {
+            this.idsClientesConectados.add(idCliente);
+        }
+    }
+
+    /**
+     * Verifica si hay clientes conectados
+     */
+    public boolean hayClientesConectados() {
+        return idsClientesConectados != null && !idsClientesConectados.isEmpty();
+    }
+
+    /**
+     * Obtiene la cantidad de clientes conectados
+     */
+    public int getCantidadClientesConectados() {
+        return idsClientesConectados != null ? idsClientesConectados.size() : 0;
+    }
+
     @Override
     public String toString() {
         return "ResultadoRuta{" +
@@ -124,6 +166,7 @@ public class ResultadoRuta {
                 ", distanciaTotal=" + distanciaTotal +
                 ", cantidadPostes=" + cantidadPostes +
                 ", nodosSugeridos=" + (nodosSugeridos != null ? nodosSugeridos.size() : 0) +
+                ", clientesConectados=" + (idsClientesConectados != null ? idsClientesConectados.size() : 0) +
                 '}';
     }
 }

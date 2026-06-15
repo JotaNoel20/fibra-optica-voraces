@@ -10,32 +10,43 @@
       xmlns:fx="http://javafx.com/fxml/1" 
       fx:controller="com.fibra.frontend.controllers.ToolbarController"
       spacing="15.0" 
-      style="-fx-background-color: #1A1A1A; -fx-border-color: #2D2D2D; -fx-border-width: 0 0 1 0;">
+      style="-fx-background-color: #1A1A1A; -fx-border-color: #2D2D2D; -fx-border-width: 0 0 1 0;"
+      prefHeight="60">
     
     <padding>
         <Insets top="10.0" right="15.0" bottom="10.0" left="15.0"/>
     </padding>
 
     <children>
-        <ToggleButton fx:id="btnNavegar" text="✋ Navegar" onAction="#seleccionarHerramienta" />
+        <ToggleButton fx:id="btnNavegar" text="✋ Navegar" onAction="#seleccionarHerramienta" 
+                      prefWidth="100" />
         
-        <ToggleButton fx:id="btnCentral" text="📍 Central" onAction="#seleccionarHerramienta" />
-        <ToggleButton fx:id="btnPostePrincipal" text="🟠 Poste Principal" onAction="#seleccionarHerramienta" />
-        <ToggleButton fx:id="btnPosteSecundario" text="🟡 Poste Secundario" onAction="#seleccionarHerramienta" />
-        <ToggleButton fx:id="btnCliente" text="🟢 Cliente Terminal" onAction="#seleccionarHerramienta" />
+        <ToggleButton fx:id="btnCentral" text="📍 Central" onAction="#seleccionarHerramienta" 
+                      prefWidth="100" />
+        <ToggleButton fx:id="btnPostePrincipal" text="🟠 Poste Principal" onAction="#seleccionarHerramienta" 
+                      prefWidth="120" />
+        <ToggleButton fx:id="btnPosteSecundario" text="🟡 Poste Secundario" onAction="#seleccionarHerramienta" 
+                      prefWidth="120" />
+        <ToggleButton fx:id="btnCliente" text="🟢 Cliente Terminal" onAction="#seleccionarHerramienta" 
+                      prefWidth="120" />
         
-        <CheckBox fx:id="chkConectarTodosPostes" />
+        <CheckBox fx:id="chkUsarSoloDistancia" text="📏 Usar solo distancia (sin penalización)" 
+                  style="-fx-text-fill: #E0E0E0;" />
         
         <Button fx:id="btnImplementarRed" text="🚀 IMPLEMENTAR RED" onAction="#implementarRed" 
-                style="-fx-background-color: #2D5A27; -fx-text-fill: white; -fx-font-weight: bold;" />
+                style="-fx-background-color: #2D5A27; -fx-text-fill: white; -fx-font-weight: bold;" 
+                prefWidth="160" />
         
         <Button fx:id="btnComparar" text="📊 COMPARAR" onAction="#compararAlgoritmos" 
-                style="-fx-background-color: #2D5A27; -fx-text-fill: white; -fx-font-weight: bold;" />
+                style="-fx-background-color: #2D5A27; -fx-text-fill: white; -fx-font-weight: bold;" 
+                prefWidth="120" />
         
         <Button fx:id="btnBorrarConexiones" text="🔌 BORRAR CONEXIONES" onAction="#borrarConexiones" 
-                style="-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-weight: bold;" />
+                style="-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-weight: bold;" 
+                prefWidth="160" />
         
         <Button fx:id="btnLimpiarTodo" text="🗑️ LIMPIAR TODO" onAction="#limpiarTodo" 
-                style="-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-weight: bold;" />        
+                style="-fx-background-color: #8B0000; -fx-text-fill: white; -fx-font-weight: bold;" 
+                prefWidth="140" />        
     </children>
 </HBox>

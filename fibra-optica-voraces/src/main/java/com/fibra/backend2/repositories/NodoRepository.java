@@ -97,6 +97,20 @@ public class NodoRepository {
         }
     }
 
+    /**
+     * RESETEA los contadores clientes_actuales de todos los clientes a 0
+     */
+    public void resetearClientes() {
+        String sql = "UPDATE nodos SET clientes_actuales = 0 WHERE tipo = 'CLIENTE'";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            int actualizados = statement.executeUpdate();
+            System.out.println("  Clientes reseteados: " + actualizados);
+        } catch (SQLException e) {
+            throw new SpatialException("Error al resetear contadores de clientes.", e);
+        }
+    }
+
     public NodoDTO buscarPorId(int id) {
         String sql = "SELECT " + COLUMNAS_NODO + " FROM nodos WHERE id = ?";
 

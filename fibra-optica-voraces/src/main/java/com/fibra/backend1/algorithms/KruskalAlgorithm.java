@@ -20,26 +20,33 @@ public class KruskalAlgorithm {
 
     /**
      * Genera la red de expansión mínima usando el algoritmo de KRUSKAL.
-     * Este algoritmo conecta TODOS los nodos sin importar la central.
-     * La central es tratada como un nodo más.
+     * PRIMERO: Conecta todos los postes.
+     * LUEGO: Conecta cada cliente al poste más cercano (por distancia real).
      * 
      * @param grafo Grafo con todos los nodos y aristas potenciales
      * @return ResultadoRuta con las conexiones seleccionadas
      */
     public ResultadoRuta generarRed(Grafo grafo) {
         List<Arista> resultado = new ArrayList<>();
+        Set<Integer> clientesConectados = new HashSet<>();
         
-        // Validación inicial
         if (grafo == null || grafo.getNodos().isEmpty()) {
             throw new IllegalArgumentException("El grafo no puede ser nulo o vacío");
         }
         
-        // Filtrar nodos activos (excluir INACTIVOS y SUGERIDOS)
         List<Nodo> nodosActivos = new ArrayList<>();
+        List<Nodo> postes = new ArrayList<>();
+        List<Nodo> clientes = new ArrayList<>();
+        
         for (Nodo nodo : grafo.getNodos()) {
             if (nodo.getEstado() != EstadoNodo.INACTIVO && 
                 nodo.getTipo() != TipoNodo.SUGERIDO) {
                 nodosActivos.add(nodo);
+                if (esPoste(nodo)) {
+                    postes.add(nodo);
+                } else if (nodo.getTipo() == TipoNodo.CLIENTE) {
+                    clientes.add(nodo);
+                }
             }
         }
         
@@ -47,77 +54,147 @@ public class KruskalAlgorithm {
             throw new IllegalStateException("Se necesitan al menos 2 nodos activos para generar la red");
         }
         
-        // Filtrar aristas válidas (costo no infinito)
-        List<Arista> aristasValidas = new ArrayList<>();
+        // ========== FASE 1: Conectar SOLO aristas que NO involucran clientes ==========
+        List<Arista> aristasPostes = new ArrayList<>();
+        
         for (Arista arista : grafo.getAristas()) {
-            // Verificar que la arista sea válida según DistanceValidator
-            if (arista.getCosto() != Double.MAX_VALUE && 
-                distanceValidator.esValida(arista.getOrigen(), arista.getDestino())) {
-                aristasValidas.add(arista);
+            if (arista.getCosto() == Double.MAX_VALUE || 
+                !distanceValidator.esValida(arista.getOrigen(), arista.getDestino())) {
+                continue;
+            }
+            
+            boolean tieneCliente = (arista.getOrigen().getTipo() == TipoNodo.CLIENTE ||
+                                    arista.getDestino().getTipo() == TipoNodo.CLIENTE);
+            
+            if (!tieneCliente) {
+                aristasPostes.add(arista);
             }
         }
         
-        // Ordenar las aristas por su costo de menor a mayor
-        aristasValidas.sort(Comparator.comparingDouble(Arista::getCosto));
+        aristasPostes.sort(Comparator.comparingDouble(Arista::getCosto));
 
-        // Estructura Union-Find para control de ciclos (Disjoint-Set)
         Map<Nodo, Nodo> padre = new HashMap<>();
         for (Nodo n : nodosActivos) {
-            padre.put(n, n); // Cada nodo es su propio padre al inicio
+            padre.put(n, n);
         }
 
         double costoTotal = 0;
         double distanciaTotal = 0;
         int cantidadPostesUsados = 0;
         int aristasAgregadas = 0;
-        int aristasNecesarias = nodosActivos.size() - 1;
+        int aristasNecesariasPostes = postes.size();  // Conectar todos los postes
 
-        for (Arista arista : aristasValidas) {
-            // Si ya tenemos todas las aristas necesarias, salir
-            if (aristasAgregadas >= aristasNecesarias) {
+        if (DEBUG) System.out.println("=== FASE 1: Conectando postes ===");
+        
+        // Conectar todos los postes entre sí
+        for (Arista arista : aristasPostes) {
+            if (aristasAgregadas >= aristasNecesariasPostes - 1) {
                 break;
+            }
+            
+            // Solo conectar si ambos son postes
+            if (!esPoste(arista.getOrigen()) || !esPoste(arista.getDestino())) {
+                continue;
             }
             
             Nodo raizOrigen = encontrarRaiz(arista.getOrigen(), padre);
             Nodo raizDestino = encontrarRaiz(arista.getDestino(), padre);
 
-            // Si las raíces son distintas, no hay ciclo. Se puede cablear este tramo.
             if (!raizOrigen.equals(raizDestino)) {
                 resultado.add(arista);
                 costoTotal += arista.getCosto();
                 distanciaTotal += arista.getDistancia();
                 aristasAgregadas++;
                 
-                // Contar postes (solo la primera vez que se agrega un poste)
-                if (esPoste(arista.getOrigen()) && !yaContadoPoste(arista.getOrigen(), resultado)) {
+                if (!yaContadoPoste(arista.getOrigen(), resultado)) {
                     cantidadPostesUsados++;
                 }
-                if (esPoste(arista.getDestino()) && !yaContadoPoste(arista.getDestino(), resultado)) {
+                if (!yaContadoPoste(arista.getDestino(), resultado)) {
                     cantidadPostesUsados++;
                 }
 
-                // Unión de los dos subconjuntos
                 padre.put(raizOrigen, raizDestino);
             }
         }
-
-        // Verificar si se conectaron todos los nodos
-        if (aristasAgregadas < aristasNecesarias) {
-            System.out.println("Advertencia: No se pudieron conectar todos los nodos. " +
-                    "Conexiones: " + aristasAgregadas + " de " + aristasNecesarias);
+        
+        // ========== FASE 2: Conectar clientes al poste más cercano ==========
+        if (DEBUG) System.out.println("=== FASE 2: Conectando clientes al poste más cercano ===");
+        
+        // Obtener todos los postes ya conectados
+        Set<Nodo> postesConectados = new HashSet<>();
+        for (Arista arista : resultado) {
+            if (esPoste(arista.getOrigen())) {
+                postesConectados.add(arista.getOrigen());
+            }
+            if (esPoste(arista.getDestino())) {
+                postesConectados.add(arista.getDestino());
+            }
+        }
+        
+        // También incluir la central si no está ya
+        for (Nodo nodo : nodosActivos) {
+            if (nodo.getTipo() == TipoNodo.CENTRAL) {
+                postesConectados.add(nodo);
+            }
+        }
+        
+        // Para cada cliente, encontrar el poste más cercano
+        for (Nodo cliente : clientes) {
+            if (clientesConectados.contains(cliente.getId())) {
+                continue;
+            }
+            
+            Nodo posteMasCercano = null;
+            double distanciaMinima = Double.MAX_VALUE;
+            
+            for (Nodo poste : postesConectados) {
+                double distancia = cliente.distanciaA(poste);
+                
+                // Verificar si la conexión es válida (distancia máxima 1000m)
+                if (distancia <= 1000.0 && distancia < distanciaMinima) {
+                    distanciaMinima = distancia;
+                    posteMasCercano = poste;
+                }
+            }
+            
+            // También considerar postes no conectados pero cercanos
+            for (Nodo poste : postes) {
+                if (postesConectados.contains(poste)) {
+                    continue;
+                }
+                double distancia = cliente.distanciaA(poste);
+                if (distancia <= 1000.0 && distancia < distanciaMinima) {
+                    distanciaMinima = distancia;
+                    posteMasCercano = poste;
+                    // No marcamos el poste como conectado todavía
+                }
+            }
+            
+            if (posteMasCercano != null) {
+                // Crear arista directa al poste más cercano
+                Arista arista = new Arista(posteMasCercano, cliente, distanciaMinima);
+                resultado.add(arista);
+                costoTotal += arista.getCosto();
+                distanciaTotal += distanciaMinima;
+                clientesConectados.add(cliente.getId());
+                
+                if (DEBUG) {
+                    System.out.println("  Cliente " + cliente.getId() + " conectado a poste " + 
+                                       posteMasCercano.getId() + " (dist: " + distanciaMinima + "m)");
+                }
+            }
         }
 
-        return new ResultadoRuta(resultado, costoTotal, distanciaTotal, cantidadPostesUsados);
+        ResultadoRuta resultadoRuta = new ResultadoRuta(resultado, costoTotal, distanciaTotal, cantidadPostesUsados);
+        resultadoRuta.setIdsClientesConectados(clientesConectados);
+        
+        return resultadoRuta;
     }
 
-    /**
-     * Función auxiliar de Union-Find con compresión de caminos (versión iterativa)
-     */
     private Nodo encontrarRaiz(Nodo nodo, Map<Nodo, Nodo> padre) {
         Nodo actual = nodo;
         List<Nodo> camino = new ArrayList<>();
         
-        // Encontrar la raíz
         while (!padre.get(actual).equals(actual)) {
             camino.add(actual);
             actual = padre.get(actual);
@@ -125,7 +202,6 @@ public class KruskalAlgorithm {
         
         Nodo raiz = actual;
         
-        // Compresión de camino: todos los nodos del camino apuntan directamente a la raíz
         for (Nodo n : camino) {
             padre.put(n, raiz);
         }
@@ -133,19 +209,12 @@ public class KruskalAlgorithm {
         return raiz;
     }
 
-    /**
-     * Verifica si un nodo es poste (PRINCIPAL o SECUNDARIO)
-     */
     private boolean esPoste(Nodo nodo) {
         return nodo.getTipo() == TipoNodo.POSTE_PRINCIPAL || 
                nodo.getTipo() == TipoNodo.POSTE_SECUNDARIO;
     }
     
-    /**
-     * Verifica si un poste ya ha sido contado en el resultado
-     */
     private boolean yaContadoPoste(Nodo poste, List<Arista> resultado) {
-        // Solo importa si ya aparece en alguna arista del resultado
         for (Arista arista : resultado) {
             if (arista.getOrigen().equals(poste) || arista.getDestino().equals(poste)) {
                 return true;
@@ -153,4 +222,7 @@ public class KruskalAlgorithm {
         }
         return false;
     }
+    
+    // Flag para depuración
+    private static final boolean DEBUG = false;
 }

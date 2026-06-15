@@ -18,6 +18,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.application.Platform;
 
 public class MapController {
 
@@ -57,7 +58,11 @@ public class MapController {
             mapRenderer.setOnMousePressed(this::manejarMousePresionado);
             mapRenderer.setOnMouseDragged(this::manejarMouseArrastrado);
             mapRenderer.setOnMouseReleased(this::manejarMouseLiberado);
-            mapRenderer.setOnMouseClicked(this::manejarClicEnMapa);
+            
+            mapRenderer.setOnMouseClicked(event -> {
+                mapRenderer.requestFocus();
+                manejarClicEnMapa(event);
+            });
             
             mapRenderer.widthProperty().addListener((obs, oldVal, newVal) -> {
                 mapRenderer.actualizarDimensiones(newVal.doubleValue(), mapRenderer.getHeight());
@@ -97,6 +102,8 @@ public class MapController {
                     });
                 }
             });
+            
+            Platform.runLater(() -> mapRenderer.requestFocus());
         }
     }
   
@@ -192,7 +199,6 @@ public class MapController {
         String tipo = nodo.getTipo() != null ? nodo.getTipo().toUpperCase() : "";
         ContextMenu menu = new ContextMenu();
         
-        // NUEVO: Opción Información
         MenuItem itemInfo = new MenuItem("ℹ️ Información");
         MenuItem itemInactivo = new MenuItem("🟫 Dar de Baja (INACTIVO)");
         MenuItem itemDisponible = new MenuItem("🟢 Reactivar (DISPONIBLE)");
@@ -210,7 +216,6 @@ public class MapController {
             }
         });
         
-        // Agregar Información al inicio del menú
         menu.getItems().add(itemInfo);
         menu.getItems().add(new SeparatorMenuItem());
         
@@ -227,17 +232,74 @@ public class MapController {
         menu.show(mapRenderer, screenX, screenY);
     }
     
-    /**
-     * Muestra un diálogo con toda la información del nodo
-     */
+    private boolean esPoste(String tipo) {
+        return "POSTE_PRINCIPAL".equalsIgnoreCase(tipo) || "POSTE_SECUNDARIO".equalsIgnoreCase(tipo);
+    }
+    
+    private boolean esClienteId(int id) {
+        if (nodoService == null) return false;
+        try {
+            NodoDTO nodo = nodoService.obtenerNodo(id);
+            return nodo != null && "CLIENTE".equalsIgnoreCase(nodo.getTipo());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
     private void mostrarInformacionNodo(NodoDTO nodo) {
-        // Contar conexiones del nodo
         int numConexiones = 0;
-        if (conexionService != null && listaConexiones != null) {
+        int numClientesConectados = 0;
+        
+        if (conexionService != null) {
+            try {
+                List<ConexionDTO> conexionesActuales = conexionService.listarConexiones();
+                if (conexionesActuales != null) {
+                    // ========== DEPURACIÓN ==========
+                    System.out.println("\n=== BUSCANDO CONEXIONES DEL NODO " + nodo.getId() + " ===");
+                    int contador = 0;
+                    for (ConexionDTO c : conexionesActuales) {
+                        if (c.getOrigenId() != null && c.getOrigenId().intValue() == nodo.getId()) {
+                            System.out.println("  Conexión encontrada como ORIGEN: " + c.getOrigenId() + " -> " + c.getDestinoId());
+                            contador++;
+                            numConexiones++;
+                            if (esClienteId(c.getDestinoId())) {
+                                numClientesConectados++;
+                            }
+                        }
+                        if (c.getDestinoId() != null && c.getDestinoId().intValue() == nodo.getId()) {
+                            System.out.println("  Conexión encontrada como DESTINO: " + c.getOrigenId() + " -> " + c.getDestinoId());
+                            contador++;
+                            numConexiones++;
+                            if (esClienteId(c.getOrigenId())) {
+                                numClientesConectados++;
+                            }
+                        }
+                    }
+                    System.out.println("Total conexiones encontradas para nodo " + nodo.getId() + ": " + contador);
+                    // ========== FIN DEPURACIÓN ==========
+                }
+            } catch (Exception e) {
+                System.err.println("Error al obtener conexiones: " + e.getMessage());
+                e.printStackTrace();
+                if (listaConexiones != null) {
+                    numConexiones = (int) listaConexiones.stream()
+                        .filter(c -> c.getOrigenId() == nodo.getId() || c.getDestinoId() == nodo.getId())
+                        .count();
+                    numClientesConectados = numConexiones;
+                }
+            }
+        } else if (listaConexiones != null) {
             numConexiones = (int) listaConexiones.stream()
                 .filter(c -> c.getOrigenId() == nodo.getId() || c.getDestinoId() == nodo.getId())
                 .count();
+            numClientesConectados = numConexiones;
         }
+        
+        System.out.println("INFO NODO " + nodo.getId() + " - Tipo: " + nodo.getTipo() + 
+                           " | Conexiones totales: " + numConexiones + 
+                           " | Clientes conectados: " + numClientesConectados);
+        
+        int clientesMostrar = esPoste(nodo.getTipo()) ? numClientesConectados : nodo.getClientesActuales();
         
         String capacidadInfo = "";
         if ("CLIENTE".equalsIgnoreCase(nodo.getTipo())) {
@@ -245,7 +307,7 @@ public class MapController {
         } else if ("CENTRAL".equalsIgnoreCase(nodo.getTipo())) {
             capacidadInfo = "Central - Capacidad: " + nodo.getCapacidadMax();
         } else {
-            capacidadInfo = "Poste - Clientes: " + nodo.getClientesActuales() + "/" + nodo.getCapacidadMax();
+            capacidadInfo = "Poste - Capacidad: " + nodo.getCapacidadMax();
         }
         
         String mensaje = String.format(
@@ -257,7 +319,8 @@ public class MapController {
             "🏷️  Tipo: %s\n" +
             "🟢 Estado: %s\n" +
             "📊 Capacidad: %s\n" +
-            "🔌 Conexiones activas: %d\n" +
+            "🔌 Conexiones totales: %d\n" +
+            "👥 Clientes conectados: %d\n" +
             "📍 Latitud: %.6f\n" +
             "📍 Longitud: %.6f\n" +
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
@@ -267,6 +330,7 @@ public class MapController {
             nodo.getEstado(),
             capacidadInfo,
             numConexiones,
+            clientesMostrar,
             nodo.getLatitud(),
             nodo.getLongitud()
         );
@@ -275,6 +339,8 @@ public class MapController {
         alert.setTitle("Información del Nodo");
         alert.setHeaderText("Nodo " + nodo.getId() + " - " + nodo.getTipo());
         alert.setContentText(mensaje);
+        alert.getDialogPane().setMinWidth(550);
+        alert.getDialogPane().setMinHeight(500);
         alert.showAndWait();
     }
 
@@ -284,20 +350,20 @@ public class MapController {
             nodoService.actualizarEstadoNodo(nodo.getId(), nuevoEstado);
             nodo.setEstado(nuevoEstado);
             nodoVisual.actualizarEstiloVisual();
-            
             recargarDatos();
         } catch (Exception e) {
             mostrarAlerta("Error", e.getMessage(), AlertType.ERROR);
         }
     }
     
-    private void recargarDatos() {
+    public void recargarDatos() {
         try {
             if (nodoService != null) {
                 this.listaNodos = nodoService.listarNodos();
             }
             if (conexionService != null) {
                 this.listaConexiones = conexionService.listarConexiones();
+                System.out.println("  Recargadas " + (listaConexiones != null ? listaConexiones.size() : 0) + " conexiones");
             }
             solicitarRedibujado();
         } catch (Exception e) {

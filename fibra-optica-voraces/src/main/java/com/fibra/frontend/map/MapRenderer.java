@@ -49,6 +49,7 @@ public class MapRenderer extends Pane {
     private Map<Integer, NodoDTO> mapaNodosCache = new HashMap<>();
 
     public MapRenderer() {
+
         this.setStyle("-fx-background-color: #1E1E1E;"); 
         this.setPrefSize(widthPx, heightPx);
         
@@ -59,6 +60,7 @@ public class MapRenderer extends Pane {
         zoomTransform.setPivotY(0);
         
         contenedorLienzo.getTransforms().addAll(panTransform, zoomTransform);
+        this.setFocusTraversable(true);
         inicializarControlesNavegacion();
     }
 

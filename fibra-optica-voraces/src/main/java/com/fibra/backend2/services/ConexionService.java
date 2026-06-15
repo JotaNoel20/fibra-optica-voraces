@@ -22,9 +22,11 @@ public class ConexionService {
         System.out.println("\n=== ConexionService.guardarConexion ===");
         System.out.println("  Recibido - Origen ID: " + conexion.getOrigenId() + " | Destino ID: " + conexion.getDestinoId() + " | Distancia: " + conexion.getDistancia());
         
-        
+        if (conexion == null) {
+            System.err.println("  ERROR: conexion es null");
+            throw new SpatialException("La conexión no puede ser nula.");
+        }
 
-        // Verificar que los nodos existan en la base de datos
         System.out.println("  Verificando existencia de nodos en BD...");
         NodoDTO origen = nodoRepository.buscarPorId(conexion.getOrigenId());
         NodoDTO destino = nodoRepository.buscarPorId(conexion.getDestinoId());
@@ -38,13 +40,11 @@ public class ConexionService {
             throw new SpatialException("El nodo destino ID " + conexion.getDestinoId() + " no existe.");
         }
 
-        // REGLA 1: No conectar nodos INACTIVOS
         if ("INACTIVO".equalsIgnoreCase(origen.getEstado()) || "INACTIVO".equalsIgnoreCase(destino.getEstado())) {
-            System.err.println("  ERROR: Nodo INACTIVO detectado - Origen estado: " + origen.getEstado() + " | Destino estado: " + destino.getEstado());
+            System.err.println("  ERROR: Nodo INACTIVO detectado");
             throw new SpatialException("Operación cancelada: Uno de los nodos seleccionados se encuentra INACTIVO.");
         }
 
-        // REGLA 2: Verificar que no exista ya una conexión entre estos mismos nodos
         List<ConexionDTO> conexionesExistentes = conexionRepository.listarTodas();
         boolean yaExisteConexion = conexionesExistentes.stream()
             .anyMatch(c -> (c.getOrigenId() == conexion.getOrigenId() && c.getDestinoId() == conexion.getDestinoId()) ||
@@ -54,7 +54,6 @@ public class ConexionService {
             throw new SpatialException("Ya existe una conexión entre " + conexion.getOrigenId() + " y " + conexion.getDestinoId());
         }
 
-        // REGLA 3: Un cliente solo puede tener una conexión
         if ("CLIENTE".equalsIgnoreCase(destino.getTipo())) {
             boolean yaTieneConexion = conexionesExistentes.stream()
                 .anyMatch(c -> c.getOrigenId() == destino.getId() || c.getDestinoId() == destino.getId());
@@ -73,53 +72,44 @@ public class ConexionService {
             }
         }
 
-        // REGLA 4: Control de capacidad del poste cuando se conecta un cliente
         if ("CLIENTE".equalsIgnoreCase(destino.getTipo())) {
-            // Verificar que el poste origen no esté saturado
             if (origen.getClientesActuales() >= origen.getCapacidadMax()) {
-                System.err.println("  ERROR: Poste origen saturado - Clientes: " + origen.getClientesActuales() + "/" + origen.getCapacidadMax());
-                throw new SpatialException("Operación cancelada: El poste origen ha alcanzado su capacidad máxima (" + origen.getCapacidadMax() + " clientes).");
+                System.err.println("  ERROR: Poste origen saturado");
+                throw new SpatialException("Operación cancelada: El poste origen está SATURADO.");
             }
             
-            // Incrementar contador de clientes del poste origen
-            int nuevosClientes = origen.getClientesActuales() + 1;
-            origen.setClientesActuales(nuevosClientes);
-            System.out.println("  Poste origen - Clientes actualizados: " + nuevosClientes + "/" + origen.getCapacidadMax());
+            int nuevosClientesPoste = origen.getClientesActuales() + 1;
+            origen.setClientesActuales(nuevosClientesPoste);
             
-            // Si alcanzó el límite, marcar como SATURADO
-            if (nuevosClientes >= origen.getCapacidadMax()) {
+            if (nuevosClientesPoste >= origen.getCapacidadMax()) {
                 origen.setEstado("SATURADO");
-                System.out.println("  Poste origen ahora está SATURADO");
             }
-            
-            // Guardar cambios del poste
             nodoRepository.actualizar(origen);
-            System.out.println("  Poste origen actualizado en BD");
+            
+            destino.setClientesActuales(1);
+            nodoRepository.actualizar(destino);
         }
         
-        // REGLA 5: Si el origen es un CLIENTE, controlar capacidad del poste destino
         if ("CLIENTE".equalsIgnoreCase(origen.getTipo())) {
             if (destino.getClientesActuales() >= destino.getCapacidadMax()) {
-                System.err.println("  ERROR: Poste destino saturado - Clientes: " + destino.getClientesActuales() + "/" + destino.getCapacidadMax());
-                throw new SpatialException("Operación cancelada: El poste destino ha alcanzado su capacidad máxima (" + destino.getCapacidadMax() + " clientes).");
+                System.err.println("  ERROR: Poste destino saturado");
+                throw new SpatialException("Operación cancelada: El poste destino está SATURADO.");
             }
             
-            int nuevosClientes = destino.getClientesActuales() + 1;
-            destino.setClientesActuales(nuevosClientes);
-            System.out.println("  Poste destino - Clientes actualizados: " + nuevosClientes + "/" + destino.getCapacidadMax());
+            int nuevosClientesPoste = destino.getClientesActuales() + 1;
+            destino.setClientesActuales(nuevosClientesPoste);
             
-            if (nuevosClientes >= destino.getCapacidadMax()) {
+            if (nuevosClientesPoste >= destino.getCapacidadMax()) {
                 destino.setEstado("SATURADO");
-                System.out.println("  Poste destino ahora está SATURADO");
             }
-            
             nodoRepository.actualizar(destino);
-            System.out.println("  Poste destino actualizado en BD");
+            
+            origen.setClientesActuales(1);
+            nodoRepository.actualizar(origen);
         }
 
         System.out.println("  Validación OK. Origen: " + origen.getId() + " (" + origen.getTipo() + "), Destino: " + destino.getId() + " (" + destino.getTipo() + ")");
 
-        // Guardar la conexión
         ConexionDTO resultado = conexionRepository.guardar(conexion);
         System.out.println("  Conexión guardada exitosamente con ID: " + resultado.getId());
         
