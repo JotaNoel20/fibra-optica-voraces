@@ -13,7 +13,6 @@ import java.util.List;
 
 public class ConexionRepository {
 
-    // Flag para activar/desactivar logs detallados
     private static final boolean DEBUG = false;
 
     public ConexionDTO guardar(ConexionDTO conexion) {
@@ -46,11 +45,6 @@ public class ConexionRepository {
         }
     }
 
-    /**
-     * Guarda múltiples conexiones en un BATCH (mucho más rápido)
-     * @param conexiones Lista de conexiones a guardar
-     * @return Número de conexiones guardadas
-     */
     public int guardarBatch(List<ConexionDTO> conexiones) {
         if (conexiones == null || conexiones.isEmpty()) {
             return 0;
@@ -67,7 +61,6 @@ public class ConexionRepository {
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             
-            // Desactivar auto-commit para batch
             connection.setAutoCommit(false);
             
             for (ConexionDTO conexion : conexiones) {
@@ -78,7 +71,6 @@ public class ConexionRepository {
                 guardadas++;
             }
             
-            // Ejecutar batch
             statement.executeBatch();
             connection.commit();
             

@@ -28,7 +28,7 @@ public class ToolbarController {
     @FXML private Button btnComparar;
     @FXML private Button btnLimpiarTodo;
     @FXML private Button btnBorrarConexiones;
-    @FXML private CheckBox chkConectarTodosPostes;  // NUEVO: CheckBox para modo todos los postes
+    @FXML private CheckBox chkUsarSoloDistancia;  // RENOMBRADO
 
     private final ToggleGroup grupoHerramientas = new ToggleGroup();
     private MapController mapController;
@@ -46,10 +46,10 @@ public class ToolbarController {
         btnPosteSecundario.setSelected(true);
         btnPosteSecundario.setStyle("-fx-background-color: #4A4A4A; -fx-text-fill: white; -fx-font-weight: bold;");
         
-        // Configurar CheckBox por defecto (false = modo normal)
-        chkConectarTodosPostes.setSelected(false);
-        chkConectarTodosPostes.setText("🔌 Conectar todos los postes");
-        chkConectarTodosPostes.setStyle("-fx-text-fill: #E0E0E0;");
+        // Configurar CheckBox por defecto (false = modo normal con costo)
+        chkUsarSoloDistancia.setSelected(false);
+        chkUsarSoloDistancia.setText("📏 Usar solo distancia (sin penalización)");
+        chkUsarSoloDistancia.setStyle("-fx-text-fill: #E0E0E0;");
     }
 
     public void setMapController(MapController mapController) {
@@ -94,8 +94,8 @@ public class ToolbarController {
     @FXML
     private void implementarRed(ActionEvent event) {
         if (mainController != null) {
-            boolean conectarTodos = chkConectarTodosPostes.isSelected();
-            mainController.implementarRed(conectarTodos);
+            boolean usarSoloDistancia = chkUsarSoloDistancia.isSelected();
+            mainController.implementarRed(usarSoloDistancia);
         }
     }
 

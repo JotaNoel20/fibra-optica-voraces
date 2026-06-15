@@ -20,6 +20,8 @@ public class PrimAlgorithm {
 
     /**
      * Genera la red de expansión mínima usando el algoritmo de PRIM.
+     * PRIMERO: Conecta todos los postes usando PRIM.
+     * LUEGO: Conecta cada cliente al poste más cercano (por distancia real).
      * 
      * @param grafo Grafo con todos los nodos y aristas potenciales
      * @param central Nodo central (punto de partida obligatorio)
@@ -28,131 +30,156 @@ public class PrimAlgorithm {
     public ResultadoRuta generarRed(Grafo grafo, Nodo central) {
         List<Arista> resultado = new ArrayList<>();
         Set<Nodo> visitados = new HashSet<>();
+        Set<Integer> clientesConectados = new HashSet<>();
         
-        // Validación inicial
         if (central == null) {
             throw new IllegalArgumentException("El nodo central no puede ser nulo");
         }
         
         if (central.getEstado() == EstadoNodo.INACTIVO) {
-            throw new IllegalStateException("La central está INACTIVA y no puede generar red");
+            throw new IllegalStateException("La central está INACTIVA");
         }
         
         if (central.getTipo() != TipoNodo.CENTRAL) {
             throw new IllegalArgumentException("El nodo proporcionado no es de tipo CENTRAL");
         }
 
-        visitados.add(central);
+        // Separar postes y clientes
+        List<Nodo> postes = new ArrayList<>();
+        List<Nodo> clientes = new ArrayList<>();
+        
+        for (Nodo nodo : grafo.getNodos()) {
+            if (nodo.getEstado() == EstadoNodo.INACTIVO || nodo.getTipo() == TipoNodo.SUGERIDO) {
+                continue;
+            }
+            if (esPoste(nodo)) {
+                postes.add(nodo);
+            } else if (nodo.getTipo() == TipoNodo.CLIENTE) {
+                clientes.add(nodo);
+            }
+        }
 
-        // Cola de prioridad para seleccionar siempre la arista más barata disponible
+        // ========== FASE 1: Conectar postes usando PRIM ==========
+        if (DEBUG) System.out.println("=== FASE 1: Conectando postes con PRIM ===");
+        
+        visitados.add(central);
+        
         PriorityQueue<Arista> colaAristas = new PriorityQueue<>(
                 Comparator.comparingDouble(Arista::getCosto)
         );
-
-        // Cargar las aristas iniciales de la central (solo conexiones válidas)
-        agregarAristasValidasDeNodo(central, grafo, visitados, colaAristas);
-
-        double costoTotal = 0;
-        double distanciaTotal = 0;
-        int cantidadPostesUsados = 0;
-
-        while (!colaAristas.isEmpty() && visitados.size() < grafo.getNodos().size()) {
-            Arista mejorArista = colaAristas.poll();
-
-            // Verificar que la arista siga siendo válida (costo no infinito)
-            if (mejorArista.getCosto() == Double.MAX_VALUE) {
-                continue;
+        
+        // Agregar aristas desde la central solo hacia postes
+        for (Arista arista : grafo.getAristas()) {
+            if (arista.getCosto() == Double.MAX_VALUE) continue;
+            
+            Nodo otro = null;
+            if (arista.getOrigen().equals(central) && esPoste(arista.getDestino())) {
+                otro = arista.getDestino();
+            } else if (arista.getDestino().equals(central) && esPoste(arista.getOrigen())) {
+                otro = arista.getOrigen();
             }
-
-            // Verificar cuál extremo no ha sido visitado aún
+            
+            if (otro != null && distanceValidator.esValida(central, otro)) {
+                colaAristas.add(arista);
+            }
+        }
+        
+        // Conectar postes entre sí
+        while (!colaAristas.isEmpty() && visitados.size() <= postes.size() + 1) {
+            Arista mejorArista = colaAristas.poll();
+            
+            if (mejorArista.getCosto() == Double.MAX_VALUE) continue;
+            
             Nodo nuevoNodo = null;
             if (visitados.contains(mejorArista.getOrigen()) && !visitados.contains(mejorArista.getDestino())) {
                 nuevoNodo = mejorArista.getDestino();
             } else if (visitados.contains(mejorArista.getDestino()) && !visitados.contains(mejorArista.getOrigen())) {
                 nuevoNodo = mejorArista.getOrigen();
             }
-
-            // Si ambos ya fueron visitados o el nuevo nodo no es válido, descartar
-            if (nuevoNodo == null) {
-                continue;
-            }
             
-            // Verificar que el nuevo nodo pueda recibir conexión
-            if (nuevoNodo.getEstado() == EstadoNodo.INACTIVO) {
-                continue;
-            }
+            if (nuevoNodo == null) continue;
+            if (nuevoNodo.getEstado() == EstadoNodo.INACTIVO) continue;
+            if (nuevoNodo.getTipo() == TipoNodo.CLIENTE) continue;
             
-            // Si es un cliente, verificar que no tenga ya una conexión
-            if (nuevoNodo.getTipo() == TipoNodo.CLIENTE && nuevoNodo.getClientesActuales() >= 1) {
-                continue;
-            }
-
-            // Validar la conexión específica según reglas de distancia
-            if (!distanceValidator.esValida(mejorArista.getOrigen(), mejorArista.getDestino())) {
-                continue;
-            }
-
-            // Confirmar y conectar el nuevo tramo
+            if (!distanceValidator.esValida(mejorArista.getOrigen(), mejorArista.getDestino())) continue;
+            
             resultado.add(mejorArista);
-            costoTotal += mejorArista.getCosto();
-            distanciaTotal += mejorArista.getDistancia();
-            
-            // Contar postes (excluyendo central y clientes)
-            if (esPoste(nuevoNodo)) {
-                cantidadPostesUsados++;
-            }
-            
             visitados.add(nuevoNodo);
-
-            // Inyectar las nuevas aristas del nodo descubierto
-            agregarAristasValidasDeNodo(nuevoNodo, grafo, visitados, colaAristas);
-        }
-
-        // Verificar si se conectaron todos los nodos
-        boolean todosConectados = visitados.size() == grafo.getNodos().size();
-        if (!todosConectados) {
-            System.out.println("Advertencia: No se pudieron conectar todos los nodos. " +
-                    "Conectados: " + visitados.size() + " de " + grafo.getNodos().size());
-        }
-
-        return new ResultadoRuta(resultado, costoTotal, distanciaTotal, cantidadPostesUsados);
-    }
-
-    /**
-     * Agrega a la cola solo las aristas válidas desde un nodo
-     */
-    private void agregarAristasValidasDeNodo(Nodo nodo, Grafo grafo, 
-                                              Set<Nodo> visitados, 
-                                              PriorityQueue<Arista> cola) {
-        for (Arista arista : grafo.getAristas()) {
-            // Evitar aristas con costo infinito
-            if (arista.getCosto() == Double.MAX_VALUE) {
-                continue;
-            }
             
-            // Verificar si la arista conecta con el nodo actual
-            boolean conectaOrigen = arista.getOrigen().equals(nodo);
-            boolean conectaDestino = arista.getDestino().equals(nodo);
-            
-            if (conectaOrigen || conectaDestino) {
-                Nodo otroNodo = conectaOrigen ? arista.getDestino() : arista.getOrigen();
+            // Agregar nuevas aristas desde el nuevo poste
+            for (Arista arista : grafo.getAristas()) {
+                if (arista.getCosto() == Double.MAX_VALUE) continue;
                 
-                // Solo agregar si el otro nodo no ha sido visitado
-                if (!visitados.contains(otroNodo)) {
-                    // Verificar que la conexión sea válida según reglas de distancia
-                    if (distanceValidator.esValida(nodo, otroNodo)) {
-                        cola.add(arista);
-                    }
+                Nodo otro = null;
+                if (arista.getOrigen().equals(nuevoNodo) && !visitados.contains(arista.getDestino()) && esPoste(arista.getDestino())) {
+                    otro = arista.getDestino();
+                } else if (arista.getDestino().equals(nuevoNodo) && !visitados.contains(arista.getOrigen()) && esPoste(arista.getOrigen())) {
+                    otro = arista.getOrigen();
+                }
+                
+                if (otro != null && distanceValidator.esValida(nuevoNodo, otro)) {
+                    colaAristas.add(arista);
                 }
             }
         }
+        
+        // ========== FASE 2: Conectar clientes al poste más cercano ==========
+        if (DEBUG) System.out.println("=== FASE 2: Conectando clientes al poste más cercano ===");
+        
+        // Obtener todos los nodos conectados (central + postes)
+        Set<Nodo> nodosConectados = new HashSet<>(visitados);
+        
+        // Para cada cliente, encontrar el nodo conectado más cercano
+        for (Nodo cliente : clientes) {
+            if (clientesConectados.contains(cliente.getId())) continue;
+            
+            Nodo nodoMasCercano = null;
+            double distanciaMinima = Double.MAX_VALUE;
+            
+            for (Nodo nodo : nodosConectados) {
+                double distancia = cliente.distanciaA(nodo);
+                if (distancia <= 1000.0 && distancia < distanciaMinima) {
+                    distanciaMinima = distancia;
+                    nodoMasCercano = nodo;
+                }
+            }
+            
+            if (nodoMasCercano != null) {
+                Arista arista = new Arista(nodoMasCercano, cliente, distanciaMinima);
+                resultado.add(arista);
+                clientesConectados.add(cliente.getId());
+                
+                if (DEBUG) {
+                    System.out.println("  Cliente " + cliente.getId() + " conectado a " + 
+                                       nodoMasCercano.getTipo() + " " + nodoMasCercano.getId() + 
+                                       " (dist: " + distanciaMinima + "m)");
+                }
+            }
+        }
+
+        // Calcular estadísticas finales
+        double costoTotal = 0;
+        double distanciaTotal = 0;
+        Set<Nodo> postesUsados = new HashSet<>();
+        
+        for (Arista arista : resultado) {
+            costoTotal += arista.getCosto();
+            distanciaTotal += arista.getDistancia();
+            if (esPoste(arista.getOrigen())) postesUsados.add(arista.getOrigen());
+            if (esPoste(arista.getDestino())) postesUsados.add(arista.getDestino());
+        }
+
+        ResultadoRuta resultadoRuta = new ResultadoRuta(resultado, costoTotal, distanciaTotal, postesUsados.size());
+        resultadoRuta.setIdsClientesConectados(clientesConectados);
+        
+        return resultadoRuta;
     }
 
-    /**
-     * Verifica si un nodo es poste (PRINCIPAL o SECUNDARIO)
-     */
     private boolean esPoste(Nodo nodo) {
         return nodo.getTipo() == TipoNodo.POSTE_PRINCIPAL || 
                nodo.getTipo() == TipoNodo.POSTE_SECUNDARIO;
     }
+    
+    // Flag para depuración
+    private static final boolean DEBUG = false;
 }
